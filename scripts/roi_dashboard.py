@@ -94,42 +94,53 @@ GRAY   = "#888780"
 # ---------
 # Figure
 # ---------
-fig = plt.figure(figsize=(16, 13), facecolor="white")
+fig = plt.figure(figsize=(16, 14), facecolor="white")
 fig.suptitle(
     "Nike Inc. — Marketing Campaign Effectiveness Analysis\n"
     f"Data: SEC EDGAR 10-K/10-Q · {data_source} · FY2022–FY2023",
-    fontsize=14, fontweight="bold", y=0.98
+    fontsize=14, fontweight="bold", y=0.99
 )
 
-gs = gridspec.GridSpec(3, 3, figure=fig, hspace=0.48, wspace=0.35)
+gs = gridspec.GridSpec(3, 3, figure=fig, hspace=0.52, wspace=0.38)
 
 # ---------------------------------------------------------------------
 #  Panel 1 (top, full width): Revenue + Ad Spend + Real Trends overlay
 #----------------------------------------------------------------------
-ax1   = fig.add_subplot(gs[0, :])
-x     = np.arange(len(quarters))
+ax1 = fig.add_subplot(gs[0, :])
+x = np.arange(len(quarters))
 width = 0.5
 
-bars  = ax1.bar(x, revenue, width=width, color=LTBLUE, edgecolor=BLUE, lw=0.8,
-                label="Quarterly revenue ($B)", zorder=2)
+bars = ax1.bar(x, revenue, width=width, color=LTBLUE, edgecolor=BLUE, lw=0.8,
+               label="Quarterly revenue ($B)", zorder=2)
 ax1_r = ax1.twinx()
+
+# Plot ad spend and Trends on independent scales so Trends variation is visible
 ax1_r.plot(x, ad_spend, "o-", color=GREEN, lw=2, ms=6, label="Ad spend ($B)", zorder=3)
 
-# Scale Trends to fit on secondary axis
-trends_scaled = trends_q / trends_q[valid_mask].max() * ad_spend.max() * 1.1
-ax1_r.plot(x, trends_scaled, "s--", color=AMBER, lw=1.5, ms=5, alpha=0.9,
-           label=f"Trends index (scaled) — {data_source}", zorder=3)
+# Normalize Trends to its own min/max range mapped to [0.5, 2.0] on right axis
+t_min, t_max = trends_q[valid_mask].min(), trends_q[valid_mask].max()
+trends_mapped = 0.5 + (trends_q - t_min) / (t_max - t_min) * 1.5
+ax1_r.plot(x, trends_mapped, "s--", color=AMBER, lw=2, ms=6, alpha=0.95,
+           label=f"Trends index (normalized {t_min:.0f}–{t_max:.0f} → 0.5–2.0)", zorder=3)
+
+# Annotate actual Trends values on each point
+for i, t in enumerate(trends_q):
+    if not np.isnan(t):
+        xoff = 28 if i == 0 else -14   # push first label right, rest left
+        ax1_r.annotate(f"{t:.0f}", (i, trends_mapped[i]),
+                       textcoords="offset points", xytext=(xoff, 10),
+                       ha="center", fontsize=7.5, color=AMBER, fontweight="bold")
 
 ax1.set_xticks(x)
 ax1.set_xticklabels(quarters, fontsize=9)
 ax1.set_ylabel("Revenue ($B)", color=BLUE, fontsize=10)
-ax1.set_ylim(9, 15)
-ax1_r.set_ylabel("Ad spend ($B) / Trends (scaled)", color=GREEN, fontsize=10)
-ax1_r.set_ylim(0, 2.5)
+ax1.set_ylim(9, 15.5)
+ax1_r.set_ylabel("Ad spend ($B)  |  Trends (normalized)", color=GREEN, fontsize=10)
+ax1_r.set_ylim(0, 2.8)
 ax1.set_title("Quarterly Revenue vs Ad Spend vs Google Trends Brand Index", fontsize=11, pad=8)
 
 for bar, rev in zip(bars, revenue):
-    ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.06,
+    ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.22,
              f"${rev:.1f}B", ha="center", va="bottom", fontsize=8, color="#0C447C")
 
 h1, l1 = ax1.get_legend_handles_labels()
@@ -149,11 +160,14 @@ ax2.set_xticks(x)
 ax2.set_xticklabels(quarters, fontsize=7.5)
 ax2.set_ylabel("Blended ROAS (x)", fontsize=9)
 ax2.set_title("Blended ROAS by Quarter\n(Revenue / Ad Spend)", fontsize=9.5)
-ax2.set_ylim(10, 16)
+ax2.set_ylim(12, 15.5)   # FIX: tighter range shows meaningful variation honestly
 ax2.legend(fontsize=8, framealpha=0.9)
 ax2.grid(axis="y", alpha=0.2)
+# Add broken axis indicator
+ax2.text(0.02, 0.04, "axis starts at 12x", transform=ax2.transAxes,
+         fontsize=6.5, color=GRAY, style="italic")
 for i, r in enumerate(blend_roas):
-    ax2.text(i, r + 0.1, f"{r:.1f}x", ha="center", va="bottom", fontsize=7.5)
+    ax2.text(i, r + 0.04, f"{r:.1f}x", ha="center", va="bottom", fontsize=7.5)
 
 # ----------------------------------------------
 # Panel 3 (mid-center): Campaign-window ROAS
@@ -164,7 +178,7 @@ cam_colors = [GREEN if r == cam_roas.max() else LTGRN for r in cam_roas[sorted_i
 ax3.barh(np.arange(len(campaigns)), cam_roas[sorted_idx],
          color=cam_colors, edgecolor="white", lw=0.5)
 ax3.set_yticks(np.arange(len(campaigns)))
-ax3.set_yticklabels([campaigns[i].replace("\n", " ") for i in sorted_idx], fontsize=7.5)
+ax3.set_yticklabels([campaigns[i].replace("\n", " ") for i in sorted_idx], fontsize=8)
 ax3.set_xlabel("Campaign-window ROAS (x)", fontsize=9)
 ax3.set_title("ROAS by Campaign Window\n(Incremental Rev / Spend)", fontsize=9.5)
 ax3.axvline(cam_roas.mean(), color=CORAL, lw=1.5, linestyle="--",
@@ -172,7 +186,7 @@ ax3.axvline(cam_roas.mean(), color=CORAL, lw=1.5, linestyle="--",
 ax3.legend(fontsize=8)
 ax3.grid(axis="x", alpha=0.2)
 for i, r in enumerate(cam_roas[sorted_idx]):
-    ax3.text(r + 0.05, i, f"{r:.1f}x", va="center", fontsize=7.5, color="#27500A")
+    ax3.text(r + 0.05, i, f"{r:.1f}x", va="center", fontsize=8, color="#27500A")
 
 # ---------------------------------------------
 # Panel 4 (mid-right): Marketing intensity
@@ -194,33 +208,47 @@ for i, p in enumerate(mkt_pct):
 # Panel 5 (bottom-left 2/3): Real Trends vs Revenue scatter
 # -------------------------------------------------------------
 ax5 = fig.add_subplot(gs[2, :2])
-sc  = ax5.scatter(trends_q[valid_mask], revenue[valid_mask],
-                  c=blend_roas[valid_mask], cmap="YlGn",
-                  s=140, edgecolor=BLUE, lw=1, zorder=3)
+sc = ax5.scatter(trends_q[valid_mask], revenue[valid_mask],
+                 c=blend_roas[valid_mask], cmap="YlGn",
+                 s=160, edgecolor=BLUE, lw=1.2, zorder=3)
 
-# Regression line
-m, b   = np.polyfit(trends_q[valid_mask], revenue[valid_mask], 1)
-x_fit  = np.linspace(trends_q[valid_mask].min(), trends_q[valid_mask].max(), 50)
-ax5.plot(x_fit, m * x_fit + b, "--", color=CORAL, lw=1.5, alpha=0.8,
-         label=f"Linear fit  r={r_val:.2f}, p={p_val:.2f}, R²={r_val**2:.2f}")
+m, b = np.polyfit(trends_q[valid_mask], revenue[valid_mask], 1)
+x_fit = np.linspace(trends_q[valid_mask].min() - 0.5, trends_q[valid_mask].max() + 0.5, 50)
+ax5.plot(x_fit, m * x_fit + b, "--", color=CORAL, lw=1.8, alpha=0.85,
+         label=f"Linear fit  r={r_val:.2f}, R²={r_val ** 2:.2f}, p={p_val:.2f}")
 
-# Annotate each point with quarter label
+# Annotate 2022Q1 outlier with explanation
 for i, (t, rv) in enumerate(zip(trends_q, revenue)):
     if not np.isnan(t):
+        offset = (6, 5)
+        if q_labels[i] == "2022Q1":
+            offset = (6, -14)  # push label below to avoid overlap
         ax5.annotate(q_labels[i], (t, rv), fontsize=7.5,
-                     xytext=(5, 4), textcoords="offset points", color=GRAY)
+                     xytext=offset, textcoords="offset points", color=GRAY)
+
+# Callout for 2022Q1 outlier
+q1_t = trends_q[0]
+q1_r = revenue[0]
+ax5.annotate(
+    "2022Q1: post-COVID\nrecovery quarter\n(revenue below trend)",
+    xy=(q1_t, q1_r),
+    xytext=(q1_t + 1.2, q1_r + 0.28),
+    fontsize=7, color=CORAL,
+    arrowprops=dict(arrowstyle="->", color=CORAL, lw=1),
+    bbox=dict(boxstyle="round,pad=0.3", fc="white", ec=CORAL, lw=0.8)
+)
 
 ax5.set_xlabel("Google Trends brand index (quarterly avg — real data)", fontsize=9)
 ax5.set_ylabel("Revenue ($B)", fontsize=9)
 ax5.set_title(
     f"Trends Index vs Revenue — same quarter  "
-    f"(r = {r_val:.2f}, R² = {r_val**2:.2f}, p = {p_val:.2f}, n = {valid_mask.sum()})\n"
-    f"Moderate positive correlation — high search interest coincides with higher revenue",
+    f"(r = {r_val:.2f}, R² = {r_val ** 2:.2f}, p = {p_val:.2f}, n = {valid_mask.sum()})\n"
+    "Moderate positive correlation — high search interest coincides with higher revenue",
     fontsize=9.5
 )
 plt.colorbar(sc, ax=ax5, label="Blended ROAS", pad=0.02)
 ax5.grid(alpha=0.2)
-ax5.legend(fontsize=8)
+ax5.legend(fontsize=8.5, loc="upper left")
 
 # ---------------------------------------
 # Panel 6 (bottom-right): KPI summary
@@ -230,24 +258,25 @@ ax6.axis("off")
 ax6.set_title("Summary KPIs", fontsize=10, fontweight="bold", pad=12)
 
 kpis = [
-    ("Total Ad Spend",     f"${ad_spend.sum():.2f}B",    "7-quarter total (SEC 10-K)"),
-    ("Total Revenue",      f"${revenue.sum():.2f}B",     "7-quarter total"),
-    ("Avg Blended ROAS",   f"{blend_roas.mean():.1f}x",  "Revenue / Ad Spend"),
-    ("Best Campaign",      "World Cup  6.2x",             "Jun–Jul 2022"),
-    ("Trends Correlation", f"r = {r_val:.2f}",           f"R² = {r_val**2:.2f}, n=7"),
-    ("Avg Mktg Intensity", f"{mkt_pct.mean():.1f}%",     "Ad spend as % of revenue"),
+    ("Total Ad Spend", f"${ad_spend.sum():.2f}B", "7-quarter total (SEC 10-K)"),
+    ("Total Revenue", f"${revenue.sum():.2f}B", "7-quarter total"),
+    ("Avg Blended ROAS", f"{blend_roas.mean():.1f}x", "Revenue / Ad Spend"),
+    ("Best Campaign", "World Cup  6.2x", "Jun–Jul 2022"),
+    ("Trends Correlation", f"r = {r_val:.2f}", f"R-sq = {r_val ** 2:.2f},  p = {p_val:.2f},  n=7"),
+    ("Avg Mktg Intensity", f"{mkt_pct.mean():.1f}%", "Ad spend as % of revenue"),
 ]
 
+row_h = 1.0 / (len(kpis) + 0.5)
 for i, (label, value, note) in enumerate(kpis):
-    y = 0.93 - i * 0.155
-    ax6.text(0.0, y,        label, transform=ax6.transAxes,
+    y = 0.95 - i * 0.158
+    ax6.text(0.05, y, label, transform=ax6.transAxes,
              fontsize=8.5, color=GRAY, va="top")
-    ax6.text(0.0, y - 0.05, value, transform=ax6.transAxes,
-             fontsize=13, fontweight="bold", color=BLUE, va="top")
-    ax6.text(0.0, y - 0.095, note, transform=ax6.transAxes,
+    ax6.text(0.05, y - 0.052, value, transform=ax6.transAxes,
+             fontsize=12, fontweight="bold", color=BLUE, va="top")
+    ax6.text(0.05, y - 0.100, note, transform=ax6.transAxes,
              fontsize=7.5, color=GRAY, va="top")
     if i < len(kpis) - 1:
-        ax6.axhline(y - 0.125, color="#ddd", lw=0.5, xmin=0, xmax=1)
+        ax6.axhline(y - 0.130, color="#ddd", lw=0.5, xmin=0.03, xmax=0.97)
 
 # ------
 # Save
