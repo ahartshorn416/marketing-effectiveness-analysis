@@ -39,7 +39,8 @@ trends_df = trends_df.reset_index()
 #-----------------------------------------------
 # Create a composite "Nike brand interest" index
 #-----------------------------------------------
-trends_df["brand_index"] = trends_df[KEYWORDS].mean(axis=1).round(1)
+weights = {"Nike shoes": 0.5, "Nike running": 0.2, "Nike sale": 0.15, "Nike Air Max": 0.15}
+trends_df["brand_index"] = sum(trends_df[k] * w for k, w in weights.items()).round(1)
 
 #----------------------------------------------------
 # Resample to quarterly for merge with financial data
