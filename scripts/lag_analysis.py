@@ -14,37 +14,49 @@ rolling 4-week revenue proxy (interpolated from quarterly data).
 # Imports
 #------------
 import os
+import pathlib
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from scipy import stats
 
-os.makedirs("data", exist_ok=True)
-os.makedirs("charts", exist_ok=True)
+# --------
+# Paths
+# --------
+PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent
+RESULTS_DIR = PROJECT_ROOT / "results"
+RESULTS_DIR.mkdir(exist_ok=True)
 
-#------------
-# Load data
-#------------
-pd.read_csv("C:\\Users\\alica\\OneDrive\\Documents\\marketing-effectiveness-analysis\\data\\trends_weekly.csv", index_col=0, parse_dates=True)
+print(f"Saving outputs to: {RESULTS_DIR}\n")
 
-np.random.seed(42)
-date_range = pd.date_range("2022-01-03", "2023-09-25", freq="W-MON")
-n = len(date_range)
+#--------------------------------------------------
+# Load real Google Trends data from pull_trends.py
+#--------------------------------------------------
+trends_csv = PROJECT_ROOT / "data" / "trends_weekly.csv"
 
-# Simulate realistic Trends with known campaign spikes
-trends_base = 45 + 10 * np.sin(np.linspace(0, 4 * np.pi, n))
-spikes = np.zeros(n)
-# World Cup spike (week ~22-26), Holiday spike (week ~48-52), Marathon spike (week ~16)
-for center, height in [(22, 28), (48, 35), (75, 20), (16, 18), (64, 22), (88, 15)]:
-    if center < n:
-        spikes += height * np.exp(-0.5 * ((np.arange(n) - center) / 3) ** 2)
-
-trends_weekly = pd.Series(
-    np.clip(trends_base + spikes + np.random.normal(0, 3, n), 20, 100),
-    index=date_range,
-    name="brand_index"
-)
+if trends_csv.exists():
+    print(f"Loading real Trends data from {trends_csv}")
+    trends_df = pd.read_csv(trends_csv, index_col=0, parse_dates=True)
+    trends_weekly = trends_df["brand_index"].dropna()
+    date_range = trends_weekly.index
+    n = len(trends_weekly)
+    print(f"Loaded {n} weeks of real Trends data ({date_range[0].date()} → {date_range[-1].date()})\n")
+else:
+    print("WARNING: data/trends_weekly.csv not found — using simulated data.")
+    print("Run pull_trends.py first to use real Google Trends data.\n")
+    np.random.seed(42)
+    date_range = pd.date_range("2022-01-03", "2023-09-25", freq="W-MON")
+    n = len(date_range)
+    trends_base = 45 + 10 * np.sin(np.linspace(0, 4 * np.pi, n))
+    spikes = np.zeros(n)
+    for center, height in [(22, 28), (48, 35), (75, 20), (16, 18), (64, 22), (88, 15)]:
+        if center < n:
+            spikes += height * np.exp(-0.5 * ((np.arange(n) - center) / 3) ** 2)
+    trends_weekly = pd.Series(
+        np.clip(trends_base + spikes + np.random.normal(0, 3, n), 20, 100),
+        index=date_range, name="brand_index"
+    )
 
 # ------------------------------------------
 # Interpolate quarterly revenue to weekly
@@ -154,10 +166,14 @@ for bar, row in zip(bars, corr_df.itertuples()):
              color="#0C447C" if row.lag_weeks == optimal_lag else "#555")
 ax2.grid(axis="y", alpha=0.3)
 
-plt.tight_layout()
-plt.savefig("charts/lag_correlation.png", dpi=150, bbox_inches="tight")
+#------------
+# Save
+#------------
+chart_path = RESULTS_DIR / "lag_correlation.png"
+plt.savefig(chart_path, dpi=150, bbox_inches="tight")
 plt.close()
-print("\n✓ Chart saved to charts/lag_correlation.png")
+print(f"\n✓ Chart saved to {chart_path}")
 
-corr_df.to_csv("data/lag_correlations.csv", index=False)
-print("✓ Data saved to data/lag_correlations.csv")
+csv_path = RESULTS_DIR / "lag_correlations.csv"
+corr_df.to_csv(csv_path, index=False)
+print(f"✓ Data saved to {csv_path}")
