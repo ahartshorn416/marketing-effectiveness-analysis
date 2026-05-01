@@ -53,19 +53,19 @@ pip install --upgrade pytrends pandas numpy
 
 ```bash
 # 1. Pull real Google Trends data (requires internet, ~20 seconds)
-python scripts/01_pull_trends.py
+python scripts/pull_trends.py
 
 # 2. Load and validate Nike financials from SEC EDGAR
-python scripts/02_financials.py
+python scripts/financials.py
 
 # 3. Quarterly lag correlation analysis
-python scripts/03_lag_analysis.py
+python scripts/lag_analysis.py
 
 # 4. Generate final dashboard
-python scripts/04_roi_dashboard.py
+python scripts/roi_dashboard.py
 ```
 
-> **Note:** `01_pull_trends.py` makes two API calls with a 10-second pause between them to avoid Google's rate limit. If you hit a 429 error, wait 60 seconds and retry.
+> **Note:** `pull_trends.py` makes two API calls with a 10-second pause between them to avoid Google's rate limit. If you hit a 429 error, wait 60 seconds and retry.
 
 All outputs save automatically to `data/` and `results/` relative to the project root — no path configuration needed.
 
