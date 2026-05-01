@@ -20,10 +20,10 @@ Analyzes marketing campaign ROI for Nike Inc. using real Google Trends data, SEC
 ```
 marketing-effectiveness-analysis/
 ├── scripts/
-│   ├── 01_pull_trends.py      # Pull real Google Trends data via pytrends (2 keyword batches)
-│   ├── 02_financials.py       # Nike quarterly financials from SEC EDGAR 10-K/10-Q
-│   ├── 03_lag_analysis.py     # Cross-correlation: Trends index vs revenue by quarter
-│   └── 04_roi_dashboard.py    # 6-panel ROI dashboard (reads real Trends CSV)
+│   ├── pull_trends.py      # Pull real Google Trends data via pytrends (2 keyword batches)
+│   ├── financials.py       # Nike quarterly financials from SEC EDGAR 10-K/10-Q
+│   ├── lag_analysis.py     # Cross-correlation: Trends index vs revenue by quarter
+│   └── roi_dashboard.py    # 6-panel ROI dashboard (reads real Trends CSV)
 ├── data/                      # Generated CSVs (gitignore or commit as reference data)
 │   ├── trends_weekly.csv      # 92 weeks of real Google Trends data
 │   ├── trends_quarterly.csv   # Quarterly aggregated Trends index
